@@ -5,6 +5,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "x86.h"
+#include "fs.h"
 #include "klog.h"
 
 // Per-CPU log buffers

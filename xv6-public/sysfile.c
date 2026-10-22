@@ -80,7 +80,7 @@ sys_read(void)
   result = fileread(f, p, n);
   // Only log significant reads (>= 64 bytes) to avoid flooding
   if(result >= 64)
-    klog_debug("read: %d bytes", result);
+    klog_fs("read: %d bytes", result);
   return result;
 }
 
@@ -97,7 +97,7 @@ sys_write(void)
   result = filewrite(f, p, n);
   // Only log significant writes (>= 64 bytes) to avoid flooding
   if(result >= 64)
-    klog_debug("write: %d bytes", result);
+    klog_fs("write: %d bytes", result);
   return result;
 }
 
@@ -310,14 +310,14 @@ sys_open(void)
     ip = create(path, T_FILE, 0, 0);
     if(ip == 0){
       end_op();
-      klog_error("open: failed to create %s", path);
+      klog_fs("open: failed to create %s", path);
       return -1;
     }
-    klog_info("open: created file %s", path);
+    klog_fs("open: created file %s", path);
   } else {
     if((ip = namei(path)) == 0){
       end_op();
-      klog_warn("open: file not found %s", path);
+      klog_fs("open: file not found %s", path);
       return -1;
     }
     ilock(ip);
@@ -333,13 +333,13 @@ sys_open(void)
       fileclose(f);
     iunlockput(ip);
     end_op();
-    klog_error("open: failed to allocate fd for %s", path);
+    klog_fs("open: failed to allocate fd for %s", path);
     return -1;
   }
   iunlock(ip);
   end_op();
 
-  klog_info("open: %s fd=%d", path, fd);
+  klog_fs("open: %s fd=%d", path, fd);
 
   f->type = FD_INODE;
   f->ip = ip;

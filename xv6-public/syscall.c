@@ -104,6 +104,9 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_getklog(void);
+extern int sys_setklogmask(void);
+extern int sys_getklogmask(void);
+extern int sys_getcrashdump(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -127,7 +130,10 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
-[SYS_getklog] sys_getklog,
+[SYS_getklog]      sys_getklog,
+[SYS_setklogmask]  sys_setklogmask,
+[SYS_getklogmask]  sys_getklogmask,
+[SYS_getcrashdump] sys_getcrashdump,
 };
 
 void

@@ -28,23 +28,34 @@ klogdev_init(void)
 }
 
 // Read from /dev/klog
+// Fix Issue 1: Bounded stack entry (sizeof(struct klog_entry) == 88 B)
+// instead of entries[64] (5,632 B) which overflowed the 4,096 B kernel stack.
+// Fix Issue 2: Stream cursor tracking (last_seq) so reads advance without repeating.
 int
 klogdev_read(struct inode *ip, char *dst, int n)
 {
-  struct klog_entry entries[64];
-  int count, i, copied = 0;
-  
-  // Snapshot current logs
-  count = klog_snapshot(entries, 64);
-  
-  // Copy entries to user space
-  for(i = 0; i < count && copied + sizeof(struct klog_entry) <= n; i++){
-    if(copyout(myproc()->pgdir, (uint)dst + copied, &entries[i], 
-               sizeof(struct klog_entry)) < 0)
+  struct klog_entry entry;
+  int copied = 0;
+  struct proc *curproc = myproc();
+
+  if(n < (int)sizeof(struct klog_entry))
+    return 0;
+
+  acquire(&klogdev.lock);
+  while(copied + (int)sizeof(struct klog_entry) <= n){
+    if(!klog_read_next(&klogdev.last_seq, &entry)){
+      break; // No more unread log entries available
+    }
+    
+    if(copyout(curproc->pgdir, (uint)dst + copied, &entry, 
+               sizeof(struct klog_entry)) < 0){
+      release(&klogdev.lock);
       return -1;
+    }
     copied += sizeof(struct klog_entry);
   }
-  
+  release(&klogdev.lock);
+
   return copied;
 }
 

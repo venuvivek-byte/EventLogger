@@ -119,6 +119,7 @@ panic(char *s)
   for(i=0; i<10; i++)
     cprintf(" %p", pcs[i]);
   panicked = 1; // freeze other CPU
+  klog_panic_dump(s); // Synchronously flush ring buffer & panic trace to disk block
   for(;;)
     ;
 }

@@ -97,46 +97,69 @@ sys_getklog(void)
 {
   int buf_addr;
   int max_entries;
-  struct klog_entry *kbuf;
-  int count, i;
   struct proc *curproc = myproc();
-  
+  uint uaddr, total_bytes;
+
   // Get arguments
-  if(argint(0, &buf_addr) < 0)
+  if(argint(0, &buf_addr) < 0 || argint(1, &max_entries) < 0)
     return -1;
-  if(argint(1, &max_entries) < 0)
-    return -1;
-  
+
   if(max_entries <= 0 || max_entries > 1024)
     return -1;
-  
-  // Check if user buffer is valid
-  if(buf_addr < 0 || buf_addr >= curproc->sz)
+
+  uaddr = (uint)buf_addr;
+  total_bytes = (uint)max_entries * sizeof(struct klog_entry);
+
+  // Overflow-safe validation of user buffer address range (reject NULL and out of bounds)
+  if(uaddr == 0 || uaddr >= curproc->sz || total_bytes > curproc->sz || 
+     uaddr + total_bytes > curproc->sz || uaddr + total_bytes < uaddr)
     return -1;
-  if(buf_addr + max_entries * sizeof(struct klog_entry) > curproc->sz)
-    return -1;
-  
-  // Allocate kernel buffer
-  kbuf = (struct klog_entry*)kalloc();
-  if(kbuf == 0)
-    return -1;
-  
-  // Get snapshot (limited to one page worth)
-  int max_fit = PGSIZE / sizeof(struct klog_entry);
-  if(max_entries > max_fit)
-    max_entries = max_fit;
-  
-  count = klog_snapshot(kbuf, max_entries);
-  
-  // Copy to user space
-  for(i = 0; i < count; i++){
-    if(copyout(curproc->pgdir, (uint)buf_addr + i * sizeof(struct klog_entry),
-               &kbuf[i], sizeof(struct klog_entry)) < 0){
-      kfree((char*)kbuf);
-      return -1;
-    }
-  }
-  
-  kfree((char*)kbuf);
-  return count;
+
+  return klog_snapshot_user(curproc, uaddr, max_entries);
 }
+
+// Set runtime subsystem filter bitmask
+int
+sys_setklogmask(void)
+{
+  int mask;
+  if(argint(0, &mask) < 0)
+    return -1;
+  klog_set_mask((uint)mask);
+  return 0;
+}
+
+// Get current runtime subsystem filter bitmask
+int
+sys_getklogmask(void)
+{
+  return klog_get_mask();
+}
+
+// Read post-mortem crash dump from persistent disk block
+int
+sys_getcrashdump(void)
+{
+  int buf_addr;
+  struct proc *curproc = myproc();
+  struct klog_crash_dump dump;
+
+  if(argint(0, &buf_addr) < 0)
+    return -1;
+
+  uint uaddr = (uint)buf_addr;
+  uint size = sizeof(struct klog_crash_dump);
+
+  if(uaddr == 0 || uaddr >= curproc->sz || size > curproc->sz || 
+     uaddr + size > curproc->sz || uaddr + size < uaddr)
+    return -1;
+
+  if(klog_read_crash_dump(&dump) < 0)
+    return -1; // No crash dump available on disk
+
+  if(copyout(curproc->pgdir, uaddr, &dump, size) < 0)
+    return -1;
+
+  return 0;
+}
+

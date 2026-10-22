@@ -34,7 +34,28 @@ struct klog_entry {
   unsigned int level;
   char msg[64];
 };
+
+#define KLOG_SUB_CORE 0x01
+#define KLOG_SUB_PROC 0x02
+#define KLOG_SUB_FS   0x04
+#define KLOG_SUB_MEM  0x08
+#define KLOG_SUB_ALL  0xFF
+
+#define KLOG_CRASH_MAGIC 0x4B4C4F47
+struct klog_crash_dump {
+  unsigned int magic;
+  char panic_msg[64];
+  unsigned int timestamp_hi;
+  unsigned int timestamp_lo;
+  unsigned int cpu;
+  unsigned int entry_count;
+  struct klog_entry entries[4];
+};
+
 int getklog(struct klog_entry*, int);
+int setklogmask(unsigned int);
+int getklogmask(void);
+int getcrashdump(struct klog_crash_dump*);
 
 // ulib.c
 int stat(const char*, struct stat*);

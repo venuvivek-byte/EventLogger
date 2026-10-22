@@ -166,3 +166,43 @@ iderw(struct buf *b)
 
   release(&idelock);
 }
+
+// Synchronous Polling PIO block write for kernel crash dumps (interrupts disabled)
+void
+ide_panic_write_block(uint dev, uint blockno, void *data)
+{
+  int sector_per_block = BSIZE / SECTOR_SIZE;
+  int sector = blockno * sector_per_block;
+
+  idewait(0);
+  outb(0x3f6, 2);  // disable interrupts
+  outb(0x1f2, sector_per_block);
+  outb(0x1f3, sector & 0xff);
+  outb(0x1f4, (sector >> 8) & 0xff);
+  outb(0x1f5, (sector >> 16) & 0xff);
+  outb(0x1f6, 0xe0 | ((dev & 1) << 4) | ((sector >> 24) & 0x0f));
+  outb(0x1f7, IDE_CMD_WRITE);
+  idewait(0);
+  outsl(0x1f0, data, BSIZE / 4);
+  idewait(0);
+}
+
+// Synchronous Polling PIO block read
+void
+ide_sync_read_block(uint dev, uint blockno, void *data)
+{
+  int sector_per_block = BSIZE / SECTOR_SIZE;
+  int sector = blockno * sector_per_block;
+
+  idewait(0);
+  outb(0x3f6, 2);  // disable interrupts
+  outb(0x1f2, sector_per_block);
+  outb(0x1f3, sector & 0xff);
+  outb(0x1f4, (sector >> 8) & 0xff);
+  outb(0x1f5, (sector >> 16) & 0xff);
+  outb(0x1f6, 0xe0 | ((dev & 1) << 4) | ((sector >> 24) & 0x0f));
+  outb(0x1f7, IDE_CMD_READ);
+  idewait(1);
+  insl(0x1f0, data, BSIZE / 4);
+}
+

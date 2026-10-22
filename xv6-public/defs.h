@@ -58,6 +58,8 @@ int             writei(struct inode*, char*, uint, uint);
 void            ideinit(void);
 void            ideintr(void);
 void            iderw(struct buf*);
+void            ide_panic_write_block(uint dev, uint blockno, void *data);
+void            ide_sync_read_block(uint dev, uint blockno, void *data);
 
 // ioapic.c
 void            ioapicenable(int irq, int cpu);
@@ -71,11 +73,21 @@ void            kinit1(void*, void*);
 void            kinit2(void*, void*);
 
 // klog.c
+struct klog_entry;
+struct klog_crash_dump;
 void            klog_init(void);
 void            klog_printf(const char*, ...);
+void            klog_printf_level(int, const char*, ...);
+void            klog_printf_sub(uint, int, const char*, ...);
 int             klog_snapshot(struct klog_entry*, int);
+int             klog_snapshot_user(struct proc*, uint, int);
+int             klog_read_next(uint*, struct klog_entry*);
 void            klog_clear(void);
 uint            klog_get_dropped(void);
+void            klog_set_mask(uint);
+uint            klog_get_mask(void);
+void            klog_panic_dump(char*);
+int             klog_read_crash_dump(struct klog_crash_dump*);
 
 // klogdev.c
 void            klogdev_init(void);

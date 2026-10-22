@@ -61,15 +61,22 @@ test_klog_device(void)
     return;
   }
   
-  // Read some entries
+  int prev_seq = -1;
+  // Read some entries and verify cursor progression
   while(count < 5 && (n = read(fd, &entry, sizeof(entry))) == sizeof(entry)){
     printf(1, "  [%d] CPU%d PID%d: %s\n",
            entry.seq, entry.cpu, entry.pid, entry.msg);
+    if(prev_seq != -1 && entry.seq <= prev_seq){
+      printf(2, "ASSERTION FAILED: duplicate or non-advancing sequence %d <= %d\n",
+             entry.seq, prev_seq);
+      exit();
+    }
+    prev_seq = entry.seq;
     count++;
   }
   
   close(fd);
-  printf(1, "Read %d entries from device\n", count);
+  printf(1, "Read %d entries from device with verified cursor advancement\n", count);
 }
 
 int
